@@ -86,6 +86,18 @@ poetry run minute-meeting
 
 `torch` viene installato da PyPI con il backend Metal già integrato. Tuttavia né SpeechBrain né WhisperX/ctranslate2 supportano MPS: entrambi i backend girano su CPU su Apple Silicon.
 
+### Audio di sistema su macOS (BlackHole)
+
+Su macOS la cattura dell'audio di sistema richiede il driver virtuale **BlackHole**:
+
+1. Scarica e installa [BlackHole](https://existential.audio/blackhole/) (versione 2ch è sufficiente).
+2. Apri **Audio MIDI Setup** (Applicazioni → Utility).
+3. Crea un **Multi-Output Device** che includa sia le tue cuffie/speaker sia BlackHole.
+4. Imposta quel Multi-Output Device come uscita audio predefinita del sistema.
+5. In MinuteMeeting → **Impostazioni…**, abilita "Registra anche l'audio di sistema" (il checkbox si attiva automaticamente quando BlackHole è rilevato).
+
+L'app registrerà in contemporanea il microfono e l'audio riprodotto dal Mac (Meet, Teams, Zoom, ecc.).
+
 ### GPU NVIDIA (CUDA)
 
 Dopo `poetry install`, sostituisci torch con la variante CUDA:

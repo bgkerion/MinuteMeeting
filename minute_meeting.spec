@@ -83,6 +83,7 @@ a = Analysis(
     hiddenimports=hiddenimports + [
         "minute_meeting",
         "minute_meeting.audio.recorder",
+        "minute_meeting.audio.loopback",
         "minute_meeting.audio.extractor",
         "minute_meeting.audio.preprocessor",
         "minute_meeting.transcription.transcriber",

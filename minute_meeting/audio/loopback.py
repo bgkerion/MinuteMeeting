@@ -2,7 +2,7 @@
 
 Windows  — WASAPI loopback on the default output device (built-in).
 Linux    — PulseAudio/PipeWire monitor source (built-in).
-macOS    — not supported natively; returns None (use BlackHole instead).
+macOS    — BlackHole virtual audio driver (https://existential.audio/blackhole/).
 """
 
 from __future__ import annotations
@@ -28,6 +28,8 @@ def find_loopback_device() -> LoopbackDevice | None:
         return _find_wasapi_loopback()
     if os_name == "Linux":
         return _find_linux_monitor()
+    if os_name == "Darwin":
+        return _find_macos_blackhole()
     return None
 
 
@@ -52,6 +54,26 @@ def _find_wasapi_loopback() -> LoopbackDevice | None:
                               channels=ch, label=name)
     except Exception:
         return None
+
+
+# ------------------------------------------------------------------
+# macOS — BlackHole virtual audio driver
+# ------------------------------------------------------------------
+
+def _find_macos_blackhole() -> LoopbackDevice | None:
+    """Detect a BlackHole virtual input device (any channel count variant)."""
+    try:
+        devices = sd.query_devices()
+        for i, dev in enumerate(devices):
+            name = str(dev.get("name", ""))
+            if "blackhole" in name.lower() and int(dev.get("max_input_channels", 0)) > 0:
+                sr = int(dev.get("default_samplerate", 44_100))
+                ch = min(int(dev.get("max_input_channels", 2)), 2)
+                return LoopbackDevice(device_index=i, sample_rate=sr,
+                                      channels=ch, label=name)
+    except Exception:
+        pass
+    return None
 
 
 # ------------------------------------------------------------------

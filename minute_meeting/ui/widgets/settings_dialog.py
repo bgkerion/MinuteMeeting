@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from minute_meeting.audio.loopback import find_loopback_device
+
 _MODELS: list[tuple[str, str]] = [
     ("base — veloce, qualità minima", "base"),
     ("small — buon compromesso (consigliato)", "small"),
@@ -42,7 +44,27 @@ _LANGUAGES: list[tuple[str, str]] = [
 ]
 
 _PROMPT_LIMIT = 900   # ~224 Whisper tokens
-_LOOPBACK_SUPPORTED = platform.system() in ("Windows", "Linux")
+
+
+def _loopback_status() -> tuple[bool, str]:
+    """Return (available, tooltip) based on the current platform and installed drivers."""
+    os_name = platform.system()
+    if os_name in ("Windows", "Linux"):
+        return True, ""
+    if os_name == "Darwin":
+        lb = find_loopback_device()
+        if lb is not None:
+            return True, (
+                f"BlackHole rilevato ({lb.label}).\n"
+                "Per catturare l'audio di sistema imposta l'uscita audio del Mac\n"
+                "su un Multi-Output Device che includa BlackHole (Audio MIDI Setup)."
+            )
+        return False, (
+            "BlackHole non trovato.\n"
+            "Scaricalo da existential.audio/blackhole, installalo e\n"
+            "configura un Multi-Output Device in Audio MIDI Setup."
+        )
+    return False, "Non disponibile su questo sistema operativo."
 
 
 class SettingsDialog(QDialog):
@@ -86,14 +108,12 @@ class SettingsDialog(QDialog):
         self._denoise_check = QCheckBox("Attiva riduzione del rumore")
         self._denoise_check.setChecked(denoise)
 
+        loopback_ok, loopback_tip = _loopback_status()
         self._loopback_check = QCheckBox("Registra anche l'audio di sistema (Meet, Teams, Zoom…)")
-        self._loopback_check.setChecked(capture_system_audio and _LOOPBACK_SUPPORTED)
-        self._loopback_check.setEnabled(_LOOPBACK_SUPPORTED)
-        if not _LOOPBACK_SUPPORTED:
-            self._loopback_check.setToolTip(
-                "Non disponibile su macOS senza software di terze parti.\n"
-                "Installa BlackHole e configura un Aggregate Device in Audio MIDI Setup."
-            )
+        self._loopback_check.setChecked(capture_system_audio and loopback_ok)
+        self._loopback_check.setEnabled(loopback_ok)
+        if loopback_tip:
+            self._loopback_check.setToolTip(loopback_tip)
 
         form = QFormLayout()
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
