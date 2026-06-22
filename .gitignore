@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+*.egg
+*.egg-info/
+.venv/
+.env
+
+# PyInstaller artefatti di build
+dist/
+build/
+
+# ffmpeg.exe scaricato per la build Windows — non committare
+ffmpeg.exe
+
+# File di output dell'applicazione
+verbale_*.txt
+*.wav
+*.mp3
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.flac
+*.ogg
+
+# Modelli ML (troppo grandi per git)
+pretrained_models/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# macOS
+.DS_Store
+.AppleDouble
+__MACOSX/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Poetry
+poetry.lock.bak

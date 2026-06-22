@@ -1,0 +1,26 @@
+{
+  "version": "0.2",
+  "language": "it,en",
+  "words": [
+    "CUDA", "cuda", "winget", "pyenv", "pyproject",
+    "FLAC", "ECAPA", "TDNN", "MUON",
+    "whisperx", "WhisperX", "speechbrain", "SpeechBrain",
+    "noisereduce", "librosa", "sounddevice", "portaudio",
+    "scikit", "pytest", "ffmpeg",
+    "diarizzazione", "preprocessato",
+    "ctranslate", "ctranslate2", "onefile", "noconfirm",
+    "pyinstaller", "PyInstaller", "xattr",
+    "libbz", "libreadline", "libsqlite",
+    "Decommentare", "sull",
+    "QSettings", "QComboBox", "QDialog", "QPlainTextEdit",
+    "ISCC", "iscc", "onedir", "MEIPASS",
+    "backpropagation", "backpropagate",
+    "diarization", "embedder", "embeddings",
+    "denoise", "denoising"
+  ],
+  "ignorePaths": [
+    ".venv/**",
+    "pretrained_models/**",
+    "poetry.lock"
+  ]
+}

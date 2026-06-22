@@ -1,0 +1,98 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:          # avvio manuale da GitHub Actions
+  push:
+    tags:
+      - 'v*'                  # avvio automatico su tag tipo v0.1.0
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # ------------------------------------------------------------------ #
+      # Checkout                                                             #
+      # ------------------------------------------------------------------ #
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------ #
+      # Python 3.12                                                         #
+      # ------------------------------------------------------------------ #
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ------------------------------------------------------------------ #
+      # Poetry + dipendenze                                                  #
+      # ------------------------------------------------------------------ #
+      - name: Install Poetry
+        shell: pwsh
+        run: pip install poetry
+
+      - name: Configure Poetry (venv in-project)
+        shell: pwsh
+        run: poetry config virtualenvs.in-project true
+
+      - name: Install project dependencies
+        shell: pwsh
+        run: poetry install --without dev
+
+      # Sostituisce torch con la variante CPU-only (più piccola, senza CUDA)
+      - name: Install CPU-only torch
+        shell: pwsh
+        run: |
+          poetry run pip install torch torchaudio `
+            --index-url https://download.pytorch.org/whl/cpu `
+            --force-reinstall
+
+      - name: Install PyInstaller
+        shell: pwsh
+        run: poetry run pip install pyinstaller
+
+      # ------------------------------------------------------------------ #
+      # ffmpeg — scaricato e copiato nella root per il bundling             #
+      # ------------------------------------------------------------------ #
+      - name: Install ffmpeg (chocolatey)
+        shell: pwsh
+        run: choco install ffmpeg --no-progress -y
+
+      - name: Copy ffmpeg.exe to project root for bundling
+        shell: pwsh
+        run: Copy-Item (Get-Command ffmpeg).Source -Destination ffmpeg.exe
+
+      # ------------------------------------------------------------------ #
+      # Build PyInstaller bundle                                            #
+      # ------------------------------------------------------------------ #
+      - name: Build with PyInstaller
+        shell: pwsh
+        run: poetry run pyinstaller minute_meeting.spec --noconfirm
+
+      # ------------------------------------------------------------------ #
+      # Inno Setup installer                                                #
+      # ------------------------------------------------------------------ #
+      - name: Build installer with Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $iscc installer\minute_meeting.iss
+
+      # ------------------------------------------------------------------ #
+      # Artefatti                                                           #
+      # ------------------------------------------------------------------ #
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MinuteMeeting-Setup-Windows
+          path: dist\MinuteMeeting-Setup-*.exe
+          retention-days: 30
+
+      # Pubblica come GitHub Release solo se il trigger è un tag v*
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist\MinuteMeeting-Setup-*.exe
+          generate_release_notes: true

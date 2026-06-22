@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "minute-meeting"
+version = "0.1.0"
+description = "Automatic meeting minutes with transcription and speaker diarization"
+authors = ["Paolo Bellagente <paolo.bellagente@gmail.com>"]
+readme = "README.md"
+packages = [{include = "minute_meeting"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+
+whisperx      = {git = "https://github.com/m-bain/whisperX.git"}
+speechbrain   = "*"
+noisereduce   = "*"
+librosa       = "*"
+ffmpeg-python = "*"
+sounddevice   = "*"
+soundfile     = "*"
+pyside6       = "*"
+scikit-learn  = "*"
+
+# torch viene installato da PyPI standard.
+# - macOS Apple Silicon: include il backend Metal/MPS automaticamente.
+# - Linux/Windows CPU-only: dopo `poetry install`, sostituire torch con
+#     pip install torch --index-url https://download.pytorch.org/whl/cpu
+# - Linux/Windows GPU NVIDIA (CUDA 12.1):
+#     pip install torch --index-url https://download.pytorch.org/whl/cu121
+torch = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest      = "*"
+pytest-qt   = "*"
+pyinstaller = "*"
+
+[tool.poetry.scripts]
+minute-meeting = "minute_meeting.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
