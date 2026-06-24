@@ -91,12 +91,18 @@ class Transcriber:
         if self._initial_prompt:
             # initial_prompt lives inside model.options (a faster-whisper TranscriptionOptions
             # dataclass); FasterWhisperPipeline.transcribe() has no such kwarg directly.
-            _orig_opts = self._model.options
-            self._model.options = dc_replace(_orig_opts, initial_prompt=self._initial_prompt)
+            # If the internal API changes, fall back to passing it as a kwarg.
             try:
-                raw = self._model.transcribe(audio_arr, batch_size=8)
-            finally:
-                self._model.options = _orig_opts
+                _orig_opts = self._model.options
+                self._model.options = dc_replace(_orig_opts, initial_prompt=self._initial_prompt)
+                try:
+                    raw = self._model.transcribe(audio_arr, batch_size=8)
+                finally:
+                    self._model.options = _orig_opts
+            except (AttributeError, TypeError):
+                raw = self._model.transcribe(
+                    audio_arr, batch_size=8, initial_prompt=self._initial_prompt
+                )
         else:
             raw = self._model.transcribe(audio_arr, batch_size=8)
         language = self._language or raw.get("language", "it")

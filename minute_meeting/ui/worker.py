@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import bisect
 import math
 import os
 import tempfile
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -17,6 +19,7 @@ from minute_meeting.diarization.clustering import assign_speakers
 from minute_meeting.diarization.speaker import SpeakerEmbedder
 from minute_meeting.diarization.vad import VoiceActivityDetector
 from minute_meeting.transcription.transcriber import Transcriber, TranscriptionResult
+from minute_meeting.utils.device import whisper_device
 
 # Real-time factor: processing_seconds per audio_second, calibrated on 4 CPU cores.
 _MODEL_RTF: dict[str, float] = {
@@ -45,11 +48,19 @@ def _fmt_time(seconds: float) -> str:
 _VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
 
 
+class _Cancelled(BaseException):
+    """Raised inside run() when the user requests cancellation."""
+
+
 class ProcessingWorker(QObject):
     finished: Signal = Signal(object)
     error: Signal = Signal(str)
+    cancelled: Signal = Signal()
     # (percent 0-100, stage description)
     progress: Signal = Signal(int, str)
+
+    # Keyed by (model_size, device, compute_type) to survive model changes.
+    _transcriber_cache: dict[tuple[str, str, str], Transcriber] = {}
 
     def __init__(
         self,
@@ -66,6 +77,10 @@ class ProcessingWorker(QObject):
         self._language = language
         self._initial_prompt = initial_prompt
         self._denoise = denoise
+        self._cancel_flag = threading.Event()
+
+    def cancel(self) -> None:
+        self._cancel_flag.set()
 
     def run(self) -> None:
         try:
@@ -85,27 +100,43 @@ class ProcessingWorker(QObject):
             t0 = time.monotonic()
             audio_label = _fmt_time(audio_secs)
 
+            def _check() -> None:
+                if self._cancel_flag.is_set():
+                    raise _Cancelled
+
             def _prog(pct: int, msg: str) -> None:
                 remaining = estimated - (time.monotonic() - t0)
                 eta = f"~{_fmt_time(remaining)} rimanenti" if remaining > 2 else "quasi finito"
                 self.progress.emit(pct, f"{msg}  [audio: {audio_label}, {eta}]")
 
+            _check()
             _prog(18, "Rilevamento voce…")
             vad = VoiceActivityDetector()
             speech_segs = vad.detect(audio, sr)
 
+            _check()
             _prog(33, "Analisi caratteristiche speaker…")
             embedder = SpeakerEmbedder()
             speaker_segs = embedder.embed_segments(audio, speech_segs, sr)
 
+            _check()
             _prog(48, "Identificazione speaker…")
             assign_speakers(speaker_segs)
 
-            transcriber = Transcriber(
-                model_size=self._model_size,
-                language=self._language,
-                initial_prompt=self._initial_prompt,
-            )
+            _check()
+            _dev, _ct = whisper_device()
+            cache_key = (self._model_size, _dev, _ct)
+            if cache_key not in ProcessingWorker._transcriber_cache:
+                ProcessingWorker._transcriber_cache[cache_key] = Transcriber(
+                    model_size=self._model_size,
+                    language=self._language,
+                    initial_prompt=self._initial_prompt,
+                )
+            else:
+                cached = ProcessingWorker._transcriber_cache[cache_key]
+                cached._language = self._language
+                cached._initial_prompt = self._initial_prompt or None
+            transcriber = ProcessingWorker._transcriber_cache[cache_key]
 
             # Map transcriber sub-progress (0-100) → worker range 50-93
             def _transcription_progress(pct: int, msg: str) -> None:
@@ -121,6 +152,8 @@ class ProcessingWorker(QObject):
             self.progress.emit(100, f"Completato  (in {elapsed})")
             self.finished.emit(result)
 
+        except _Cancelled:
+            self.cancelled.emit()
         except Exception:  # noqa: BLE001
             self.error.emit(traceback.format_exc())
 
@@ -141,9 +174,17 @@ class ProcessingWorker(QObject):
     @staticmethod
     def _merge_speakers(result: TranscriptionResult, speaker_segs: list) -> None:
         """Tag each word in *result* with the speaker active at that time."""
+        if not speaker_segs:
+            return
+        starts = [s.start for s in speaker_segs]
         for word in result.words:
             mid = (word.start + word.end) / 2
-            for seg in speaker_segs:
-                if seg.start <= mid <= seg.end:
-                    word.speaker = seg.speaker_id
-                    break
+            idx = bisect.bisect_right(starts, mid) - 1
+            if idx < 0:
+                continue
+            # Scan backward: find the earliest segment that still covers mid.
+            # Handles the rare case of overlapping segments with equal start times.
+            while idx > 0 and starts[idx - 1] <= mid and speaker_segs[idx - 1].end >= mid:
+                idx -= 1
+            if speaker_segs[idx].end >= mid:
+                word.speaker = speaker_segs[idx].speaker_id

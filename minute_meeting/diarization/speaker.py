@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -11,8 +10,7 @@ from speechbrain.inference.speaker import EncoderClassifier
 
 from minute_meeting.diarization.vad import SpeechSegment
 from minute_meeting.utils.device import speechbrain_device
-
-_CACHE_DIR = Path.home() / ".cache" / "minute_meeting"
+from minute_meeting.utils.paths import CACHE_DIR
 
 
 @dataclass
@@ -27,19 +25,20 @@ class SpeakerEmbedder:
     """Extracts per-segment speaker embeddings with ECAPA-TDNN."""
 
     _MODEL_SOURCE = "speechbrain/spkrec-ecapa-voxceleb"
-    _SAVEDIR = str(_CACHE_DIR / "spkrec-ecapa-voxceleb")
+    _SAVEDIR = str(CACHE_DIR / "spkrec-ecapa-voxceleb")
 
     def __init__(self, device: str | None = None) -> None:
         self._device = device or speechbrain_device()
         self._encoder: EncoderClassifier | None = None
 
-    def _load(self) -> None:
+    def _load(self) -> EncoderClassifier:
         if self._encoder is None:
             self._encoder = EncoderClassifier.from_hparams(
                 source=self._MODEL_SOURCE,
                 savedir=self._SAVEDIR,
                 run_opts={"device": self._device},
             )
+        return self._encoder
 
     def embed_segments(
         self,
@@ -47,9 +46,7 @@ class SpeakerEmbedder:
         segments: list[SpeechSegment],
         sample_rate: int = 16_000,
     ) -> list[SpeakerSegment]:
-        self._load()
-        assert self._encoder is not None
-
+        encoder = self._load()
         results: list[SpeakerSegment] = []
         for seg in segments:
             start_idx = int(seg.start * sample_rate)
@@ -59,7 +56,7 @@ class SpeakerEmbedder:
                 continue
             wav = torch.from_numpy(chunk.astype(np.float32)).unsqueeze(0).to(self._device)
             with torch.no_grad():
-                emb = self._encoder.encode_batch(wav)
+                emb = encoder.encode_batch(wav)
             embedding = emb.squeeze().cpu().numpy()
             results.append(SpeakerSegment(start=seg.start, end=seg.end, embedding=embedding))
 

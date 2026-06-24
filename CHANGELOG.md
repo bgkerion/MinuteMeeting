@@ -6,6 +6,37 @@ versioning secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ---
 
+## [1.1.0] — 2026-06-24
+
+### Aggiunto
+- **Cancellazione elaborazione**: bottone "Annulla" nella status bar per interrompere la
+  pipeline tra uno step e l'altro (VAD → embedding → clustering → trascrizione) senza
+  chiudere l'applicazione.
+
+### Migliorato
+- **Prestazioni assegnazione speaker**: `_merge_speakers` riscritta con `bisect` — complessità
+  O(n log m) invece di O(n×m); su riunioni lunghe con molti segmenti il costo è trascurabile.
+- **Riuso del modello Whisper tra run**: `Transcriber` ora cachato a livello di classe; cambiare
+  lingua o prompt non provoca il ricaricamento del modello da disco.
+
+### Corretto
+- **`_load()` in VAD e SpeakerEmbedder**: restituisce ora il tipo concreto (`VAD` /
+  `EncoderClassifier`) eliminando il narrowing implicito post-assert che causava warning
+  statici con mypy/pyright.
+- **Import inutilizzati rimossi**: `from pathlib import Path` eliminato da `vad.py` e
+  `speaker.py` dopo la centralizzazione di `CACHE_DIR` in `utils/paths.py`.
+- **`sd.query_devices` in recorder widget**: ripristinato `.get()` (più robusto con oggetti
+  dict-like di sounddevice) al posto del check `isinstance(dev, dict)`.
+- **`initial_prompt` con fallback difensivo**: se faster-whisper cambia la struttura interna
+  di `model.options`, il codice tenta automaticamente il kwarg diretto prima di propagare
+  l'errore.
+
+### Refactor
+- `CACHE_DIR` centralizzato in `minute_meeting/utils/paths.py` (era duplicato in `vad.py`
+  e `speaker.py`).
+
+---
+
 ## [1.0.0] — 2026-06-24
 
 ### Aggiunto

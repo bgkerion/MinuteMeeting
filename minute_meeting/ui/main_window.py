@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QProgressBar,
+    QPushButton,
     QSplitter,
     QStatusBar,
     QToolBar,
@@ -106,6 +107,10 @@ class MainWindow(QMainWindow):
 
     def _build_statusbar(self) -> None:
         self._status = QStatusBar(self)
+        self._btn_cancel = QPushButton("Annulla")
+        self._btn_cancel.setVisible(False)
+        self._btn_cancel.setFixedWidth(80)
+        self._status.addPermanentWidget(self._btn_cancel)
         self._progress = QProgressBar(self)
         self._progress.setRange(0, 100)
         self._progress.setValue(0)
@@ -185,12 +190,16 @@ class MainWindow(QMainWindow):
         self._worker.progress.connect(self._on_processing_progress)
         self._worker.finished.connect(self._on_processing_done)
         self._worker.error.connect(self._on_processing_error)
+        self._worker.cancelled.connect(self._on_processing_cancelled)
         self._worker.finished.connect(self._worker_thread.quit)
         self._worker.error.connect(self._worker_thread.quit)
+        self._worker.cancelled.connect(self._worker_thread.quit)
         self._worker_thread.finished.connect(self._worker.deleteLater)
         self._worker_thread.finished.connect(self._worker_thread.deleteLater)
         self._worker_thread.finished.connect(self._clear_worker)
 
+        self._btn_cancel.setVisible(True)
+        self._btn_cancel.clicked.connect(self._worker.cancel)
         self._worker_thread.start()
 
     @Slot()
@@ -205,10 +214,18 @@ class MainWindow(QMainWindow):
         if stage:
             self._status.showMessage(f"{stage} ({percent}%)")
 
-    @Slot(object)
-    def _on_processing_done(self, result: object) -> None:
+    def _hide_progress(self) -> None:
         self._progress.setValue(0)
         self._progress.setVisible(False)
+        self._btn_cancel.setVisible(False)
+        try:
+            self._btn_cancel.clicked.disconnect()
+        except RuntimeError:
+            pass
+
+    @Slot(object)
+    def _on_processing_done(self, result: object) -> None:
+        self._hide_progress()
         if not isinstance(result, TranscriptionResult):
             return
         if result.words:
@@ -221,10 +238,14 @@ class MainWindow(QMainWindow):
             )
         self._transcript.set_result(result)
 
+    @Slot()
+    def _on_processing_cancelled(self) -> None:
+        self._hide_progress()
+        self._status.showMessage("Elaborazione annullata.", 4000)
+
     @Slot(str)
     def _on_processing_error(self, message: str) -> None:
-        self._progress.setValue(0)
-        self._progress.setVisible(False)
+        self._hide_progress()
         self._status.showMessage("Errore durante l'elaborazione.", 4000)
         QMessageBox.critical(self, "Errore", message)
 

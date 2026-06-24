@@ -21,7 +21,7 @@ def main() -> None:
     _patch_bundle_path()
     app = QApplication(sys.argv)
     app.setApplicationName("MinuteMeeting")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion("1.1.0")
 
     window = MainWindow()
     window.show()

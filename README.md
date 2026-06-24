@@ -189,8 +189,8 @@ MinuteMeeting/
 Crea un tag e fai push — il workflow costruisce e pubblica il `.exe` installer automaticamente:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 Il workflow scarica ffmpeg, compila con PyInstaller e confeziona l'installer con Inno Setup. L'artefatto viene allegato alla GitHub Release.

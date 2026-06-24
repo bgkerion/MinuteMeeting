@@ -53,3 +53,6 @@ Desktop.ini
 
 # Poetry
 poetry.lock.bak
+
+# Claude Code
+CLAUDE.md

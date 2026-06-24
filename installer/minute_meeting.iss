@@ -9,7 +9,7 @@
 ; Output: dist\MinuteMeeting-Setup-1.0.0.exe
 
 #define AppName      "MinuteMeeting"
-#define AppVersion   "1.0.0"
+#define AppVersion   "1.1.0"
 #define AppPublisher "Paolo Bellagente"
 #define AppExeName   "MinuteMeeting.exe"
 #define BundleDir    "..\dist\MinuteMeeting"
