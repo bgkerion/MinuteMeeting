@@ -133,7 +133,7 @@ Le preferenze vengono salvate automaticamente tra una sessione e l'altra.
 poetry run pytest tests/ -v
 ```
 
-La suite comprende 31 test (1 skip su macchine senza MPS) che coprono clustering, preprocessing, worker, device detection ed estrazione audio — senza richiedere modelli ML né hardware audio.
+La suite comprende 44 test (1 skip su macchine con acceleratori hardware — CUDA o MPS) che coprono clustering, preprocessing, worker, device detection, estrazione audio e loopback discovery — senza richiedere modelli ML né hardware audio.
 
 ---
 
@@ -189,8 +189,8 @@ MinuteMeeting/
 Crea un tag e fai push — il workflow costruisce e pubblica il `.exe` installer automaticamente:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 Il workflow scarica ffmpeg, compila con PyInstaller e confeziona l'installer con Inno Setup. L'artefatto viene allegato alla GitHub Release.
@@ -207,7 +207,7 @@ poetry run python scripts/build.py
 
 # 3. Installer
 iscc installer\minute_meeting.iss
-# Output: dist\MinuteMeeting-Setup-0.1.0.exe
+# Output: dist\MinuteMeeting-Setup-1.0.0.exe
 ```
 
 > Il bundle include ffmpeg automaticamente — l'utente finale non deve installare nulla.

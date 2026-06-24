@@ -62,6 +62,8 @@ hiddenimports += collect_submodules("sklearn")
 datas += [
     (str(ROOT / "minute_meeting" / "ui" / "styles" / "main.qss"),
      "minute_meeting/ui/styles"),
+    (str(ROOT / "minute_meeting" / "ui" / "styles" / "dark.qss"),
+     "minute_meeting/ui/styles"),
     (str(ROOT / ".env.example"), "."),
 ]
 

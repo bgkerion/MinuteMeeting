@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace as dc_replace
 from pathlib import Path
 from typing import Any
@@ -69,14 +70,24 @@ class Transcriber:
             )
             self._align_language = language
 
-    def transcribe(self, audio: np.ndarray | Path, sample_rate: int = 16_000) -> TranscriptionResult:
+    def transcribe(
+        self,
+        audio: np.ndarray | Path,
+        sample_rate: int = 16_000,
+        on_progress: Callable[[int, str], None] | None = None,
+    ) -> TranscriptionResult:
         if isinstance(audio, Path):
             import librosa
             audio_arr, sample_rate = librosa.load(str(audio), sr=sample_rate, mono=True)
         else:
             audio_arr = audio.astype(np.float32)
 
+        if on_progress:
+            on_progress(0, "Caricamento modello…")
         self._ensure_model()
+
+        if on_progress:
+            on_progress(15, "Trascrizione audio…")
         if self._initial_prompt:
             # initial_prompt lives inside model.options (a faster-whisper TranscriptionOptions
             # dataclass); FasterWhisperPipeline.transcribe() has no such kwarg directly.
@@ -90,6 +101,8 @@ class Transcriber:
             raw = self._model.transcribe(audio_arr, batch_size=8)
         language = self._language or raw.get("language", "it")
 
+        if on_progress:
+            on_progress(65, "Allineamento parole…")
         self._ensure_align(language)
 
         aligned = whisperx.align(

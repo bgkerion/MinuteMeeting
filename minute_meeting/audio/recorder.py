@@ -84,7 +84,7 @@ class AudioRecorder:
         chunk = indata.copy()
         self._q_mic.put(chunk)
         if self._on_level is not None:
-            rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
+            rms = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
             self._on_level(rms)
 
     def _lb_callback(self, indata: np.ndarray, frames: int, time, status) -> None:  # noqa: ANN001

@@ -101,7 +101,7 @@ class RecorderWidget(QWidget):
 
     def _update_level(self, rms: float) -> None:
         # called from sounddevice audio thread — emit signal to cross to UI thread
-        self._level_updated.emit(min(int(rms * 10), 10000))
+        self._level_updated.emit(min(int(rms * 50_000), 10000))
 
     def _forward_error(self, message: str) -> None:
         # called from recorder thread — marshal to UI thread via signal

@@ -1,6 +1,6 @@
 [project]
 name = "minute-meeting"
-version = "0.1.0"
+version = "1.0.0"
 description = "Automatic meeting minutes with transcription and speaker diarization"
 authors = [
     {name = "Paolo Bellagente", email = "paolo.bellagente@gmail.com"}

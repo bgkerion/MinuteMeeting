@@ -6,8 +6,9 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings, QThread, Slot
-from PySide6.QtGui import QAction, QCloseEvent
+from PySide6.QtGui import QAction, QCloseEvent, QGuiApplication, QPalette
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QMainWindow,
     QMessageBox,
@@ -47,7 +48,13 @@ class MainWindow(QMainWindow):
         self._build_central()
         self._build_statusbar()
 
-        self._load_style()
+        self._load_style(self._is_dark_mode())
+        try:
+            QGuiApplication.styleHints().colorSchemeChanged.connect(
+                lambda _: self._load_style(self._is_dark_mode())
+            )
+        except AttributeError:
+            pass  # colorSchemeChanged requires Qt 6.5+
 
     # ------------------------------------------------------------------
     # Build
@@ -100,19 +107,30 @@ class MainWindow(QMainWindow):
     def _build_statusbar(self) -> None:
         self._status = QStatusBar(self)
         self._progress = QProgressBar(self)
-        self._progress.setRange(0, 0)
+        self._progress.setRange(0, 100)
+        self._progress.setValue(0)
         self._progress.setVisible(False)
         self._progress.setFixedWidth(200)
         self._status.addPermanentWidget(self._progress)
         self.setStatusBar(self._status)
 
-    def _load_style(self) -> None:
-        # sys._MEIPASS is set by PyInstaller at runtime; fall back to source tree
-        base = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent
-        qss_path = base / "minute_meeting" / "ui" / "styles" / "main.qss" \
-            if hasattr(sys, "_MEIPASS") else base / "styles" / "main.qss"
+    @staticmethod
+    def _is_dark_mode() -> bool:
+        try:
+            return QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
+        except AttributeError:
+            # Qt < 6.5: infer from window background luminance
+            p = QApplication.instance().palette()
+            return p.color(QPalette.ColorRole.Window).lightness() < 128
+
+    def _load_style(self, is_dark: bool = False) -> None:
+        name = "dark.qss" if is_dark else "main.qss"
+        if hasattr(sys, "_MEIPASS"):
+            qss_path = Path(sys._MEIPASS) / "minute_meeting" / "ui" / "styles" / name
+        else:
+            qss_path = Path(__file__).parent / "styles" / name
         if qss_path.exists():
-            self.setStyleSheet(qss_path.read_text())
+            QApplication.instance().setStyleSheet(qss_path.read_text())
 
     # ------------------------------------------------------------------
     # Slots
@@ -164,6 +182,7 @@ class MainWindow(QMainWindow):
         self._worker.moveToThread(self._worker_thread)
 
         self._worker_thread.started.connect(self._worker.run)
+        self._worker.progress.connect(self._on_processing_progress)
         self._worker.finished.connect(self._on_processing_done)
         self._worker.error.connect(self._on_processing_error)
         self._worker.finished.connect(self._worker_thread.quit)
@@ -180,8 +199,15 @@ class MainWindow(QMainWindow):
         self._worker_thread = None
         self._worker = None
 
+    @Slot(int, str)
+    def _on_processing_progress(self, percent: int, stage: str) -> None:
+        self._progress.setValue(percent)
+        if stage:
+            self._status.showMessage(f"{stage} ({percent}%)")
+
     @Slot(object)
     def _on_processing_done(self, result: object) -> None:
+        self._progress.setValue(0)
         self._progress.setVisible(False)
         if not isinstance(result, TranscriptionResult):
             return
@@ -197,6 +223,7 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_processing_error(self, message: str) -> None:
+        self._progress.setValue(0)
         self._progress.setVisible(False)
         self._status.showMessage("Errore durante l'elaborazione.", 4000)
         QMessageBox.critical(self, "Errore", message)

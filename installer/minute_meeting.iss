@@ -6,10 +6,10 @@
 ; poi:
 ;   iscc installer\minute_meeting.iss
 ;
-; Output: dist\MinuteMeeting-Setup-0.1.0.exe
+; Output: dist\MinuteMeeting-Setup-1.0.0.exe
 
 #define AppName      "MinuteMeeting"
-#define AppVersion   "0.1.0"
+#define AppVersion   "1.0.0"
 #define AppPublisher "Paolo Bellagente"
 #define AppExeName   "MinuteMeeting.exe"
 #define BundleDir    "..\dist\MinuteMeeting"
