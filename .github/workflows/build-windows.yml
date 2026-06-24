@@ -55,9 +55,10 @@ jobs:
       # ------------------------------------------------------------------ #
       # ffmpeg — scaricato e copiato nella root per il bundling             #
       # ------------------------------------------------------------------ #
-      - name: Install ffmpeg (chocolatey)
-        shell: pwsh
-        run: choco install ffmpeg --no-progress -y
+      - name: Install ffmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: release
 
       - name: Copy ffmpeg.exe to project root for bundling
         shell: pwsh
